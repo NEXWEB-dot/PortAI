@@ -92,13 +92,13 @@ export function BuilderPage() {
   );
 
   const runGeneratePortfolio = useCallback(
-    async (section?: string) => {
+    async (section?: string, userInstruction?: string) => {
       setIsStreaming(true);
       addMessage({
         role: "assistant",
         content: section
           ? `Regenerating ${section}...`
-          : "Generating your portfolio...",
+          : "Designing and building your portfolio landing page...",
       });
 
       try {
@@ -107,14 +107,16 @@ export function BuilderPage() {
           apiKey,
           portfolioData,
           activePortfolio ?? undefined,
-          section as Parameters<typeof generatePortfolio>[3]
+          section as Parameters<typeof generatePortfolio>[3],
+          userInstruction
         );
         saveGeneratedPortfolio(portfolio);
+        setPortfolioData(portfolio.data);
         setShowPreview(true);
         updateLastAssistantMessage(
           section
-            ? `${section} updated. Check the preview panel.`
-            : `Portfolio ready (${portfolio.design.layoutVariant} layout).\n\nUse Preview to see it live, or Download HTML to save the file.`
+            ? `${section.toUpperCase()} updated. Check the live preview.`
+            : `Portfolio landing page ready (${portfolio.design.layoutVariant} layout, ${portfolio.design.palette} aesthetic).\n\nExplore it live in the preview on the right, ask me to refine any section, or download the clean standalone HTML.`
         );
       } catch (error) {
         const msg = error instanceof Error ? error.message : "Generation failed";
@@ -129,6 +131,7 @@ export function BuilderPage() {
       portfolioData,
       saveGeneratedPortfolio,
       setIsStreaming,
+      setPortfolioData,
       setShowPreview,
       updateLastAssistantMessage,
     ]
@@ -139,12 +142,12 @@ export function BuilderPage() {
       const regenSection = detectRegenerateSection(content);
       if (regenSection && activePortfolio) {
         addMessage({ role: "user", content });
-        await runGeneratePortfolio(regenSection);
+        await runGeneratePortfolio(regenSection, content);
         return;
       }
       if (shouldGeneratePortfolio(content)) {
         addMessage({ role: "user", content });
-        await runGeneratePortfolio();
+        await runGeneratePortfolio(undefined, content);
         return;
       }
 
