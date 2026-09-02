@@ -1,10 +1,9 @@
 "use client";
 
 import { ReactNode } from "react";
-import { motion } from "framer-motion";
 import { ThemeToggle } from "@/components/builder/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { Gem, PanelRight, PanelRightClose } from "lucide-react";
+import { Layers, PanelRight, PanelRightClose } from "lucide-react";
 
 type ChatLayoutProps = {
   children: ReactNode;
@@ -22,52 +21,36 @@ export function ChatLayout({
   onTogglePreview,
 }: ChatLayoutProps) {
   return (
-    <div className="premium-mesh relative flex h-dvh flex-col bg-background">
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -left-24 top-0 h-72 w-72 rounded-full bg-gold/5 blur-3xl" />
-        <div className="absolute -right-24 bottom-0 h-72 w-72 rounded-full bg-gold/5 blur-3xl" />
-      </div>
-
-      <motion.header
-        initial={{ y: -12, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        className="glass-panel relative z-10 flex h-16 shrink-0 items-center justify-between px-5"
-      >
-        <div className="flex items-center gap-3">
-          <motion.div
-            whileHover={{ scale: 1.05, rotate: 5 }}
-            transition={{ type: "spring", stiffness: 400, damping: 17 }}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-gold/20 bg-gold/10"
-          >
-            <Gem className="h-4 w-4 text-gold" />
-          </motion.div>
-          <div>
-            <span className="font-display text-lg font-semibold tracking-tight">
-              Port<span className="gold-gradient-text">Ai</span>
-            </span>
-            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-              Portfolio Studio
+    <div className="flex min-h-[100dvh] flex-col bg-background">
+      <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur-sm sm:px-6">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center border border-border bg-card">
+            <Layers className="h-4 w-4" strokeWidth={1.75} />
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold tracking-tight">PortAi</p>
+            <p className="hidden text-[10px] uppercase tracking-widest text-muted-foreground sm:block">
+              Portfolio builder
             </p>
           </div>
           {headerExtra}
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1">
           {onTogglePreview && (
             <Button
               variant="ghost"
               size="sm"
-              className="gap-1.5 transition-all hover:bg-gold/10 hover:text-gold"
+              className="h-8 gap-1.5 px-2 text-xs sm:px-3"
               onClick={onTogglePreview}
             >
               {showPreview ? (
                 <>
-                  <PanelRightClose className="h-4 w-4" />
-                  <span className="hidden sm:inline">Hide preview</span>
+                  <PanelRightClose className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Close</span>
                 </>
               ) : (
                 <>
-                  <PanelRight className="h-4 w-4" />
+                  <PanelRight className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">Preview</span>
                 </>
               )}
@@ -75,18 +58,11 @@ export function ChatLayout({
           )}
           <ThemeToggle />
         </div>
-      </motion.header>
+      </header>
 
-      <main className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div className="min-h-0 flex-1 overflow-y-auto scroll-smooth">{children}</div>
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.15, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="shrink-0"
-        >
-          {input}
-        </motion.div>
+      <main className="flex min-h-0 flex-1 flex-col">
+        <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+        <div className="shrink-0">{input}</div>
       </main>
     </div>
   );

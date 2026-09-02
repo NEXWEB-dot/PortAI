@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Bot, User } from "lucide-react";
 import type { ChatMessage } from "@/lib/types/portfolio";
 import { cn } from "@/lib/utils";
@@ -21,59 +20,46 @@ export function MessageList({ messages, isStreaming }: MessageListProps) {
   if (messages.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-5 px-4 py-6">
-      <AnimatePresence initial={false}>
-        {messages.map((message, index) => (
-          <motion.div
-            key={message.id}
-            initial={{ opacity: 0, y: 12, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{
-              duration: 0.35,
-              ease: [0.22, 1, 0.36, 1],
-              delay: index === messages.length - 1 ? 0 : 0,
-            }}
+    <div className="flex flex-col gap-4 px-3 py-4 sm:gap-5 sm:px-4 sm:py-6">
+      {messages.map((message) => (
+        <div
+          key={message.id}
+          className={cn(
+            "flex gap-2.5 sm:gap-3",
+            message.role === "user" ? "flex-row-reverse" : "flex-row"
+          )}
+        >
+          <div
             className={cn(
-              "flex gap-3",
-              message.role === "user" ? "flex-row-reverse" : "flex-row"
+              "flex h-7 w-7 shrink-0 items-center justify-center border sm:h-8 sm:w-8",
+              message.role === "user"
+                ? "border-foreground bg-foreground text-background"
+                : "border-border bg-card text-muted-foreground"
             )}
           >
-            <div
-              className={cn(
-                "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border",
-                message.role === "user"
-                  ? "border-gold/20 bg-gold/10"
-                  : "border-border bg-muted/50"
+            {message.role === "user" ? (
+              <User className="h-3.5 w-3.5" strokeWidth={1.75} />
+            ) : (
+              <Bot className="h-3.5 w-3.5" strokeWidth={1.75} />
+            )}
+          </div>
+          <div
+            className={cn(
+              "max-w-[min(85%,28rem)] px-3 py-2.5 text-sm leading-relaxed whitespace-pre-wrap sm:px-4 sm:py-3",
+              message.role === "user"
+                ? "bg-foreground text-background"
+                : "surface"
+            )}
+          >
+            {message.content}
+            {isStreaming &&
+              message.role === "assistant" &&
+              message.id === messages[messages.length - 1]?.id && (
+                <span className="ml-1 inline-block h-4 w-px animate-pulse bg-current" />
               )}
-            >
-              {message.role === "user" ? (
-                <User className="h-4 w-4 text-gold" />
-              ) : (
-                <Bot className="h-4 w-4 text-muted-foreground" />
-              )}
-            </div>
-            <div
-              className={cn(
-                "max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap shadow-sm",
-                message.role === "user"
-                  ? "border border-gold/15 bg-gold/10 text-foreground"
-                  : "border border-border/60 bg-card/80 text-foreground backdrop-blur-sm"
-              )}
-            >
-              {message.content}
-              {isStreaming &&
-                message.role === "assistant" &&
-                message.id === messages[messages.length - 1]?.id && (
-                  <motion.span
-                    animate={{ opacity: [1, 0.3, 1] }}
-                    transition={{ repeat: Infinity, duration: 1 }}
-                    className="ml-1 inline-block h-4 w-0.5 bg-gold"
-                  />
-                )}
-            </div>
-          </motion.div>
-        ))}
-      </AnimatePresence>
+          </div>
+        </div>
+      ))}
       <div ref={bottomRef} />
     </div>
   );

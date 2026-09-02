@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { ChatLayout } from "@/components/builder/chat-layout";
 import { ChatInput } from "@/components/builder/chat-input";
 import { EmptyState } from "@/components/builder/empty-state";
@@ -55,12 +54,10 @@ export function BuilderPage() {
   const handleResumeUpload = useCallback(
     async (file: File) => {
       setIsParsing(true);
-
       try {
         const apiKey = getApiKey();
         const resumeText = await extractPdfText(file);
         const data = await parseResumeText(apiKey, resumeText);
-
         setPortfolioData(data);
         addMessage({
           role: "user",
@@ -68,14 +65,14 @@ export function BuilderPage() {
         });
         addMessage({
           role: "assistant",
-          content: `I've extracted your profile from the resume:\n\n${data.name} — ${data.title}\n\n${data.skills.length} skills and ${data.projects.length} projects found.\n\nWould you like to edit anything, or should I generate your portfolio?`,
+          content: `Extracted your profile:\n\n${data.name} - ${data.title}\n\n${data.skills.length} skills, ${data.projects.length} projects.\n\nEdit anything or say "generate my portfolio".`,
         });
         setShowPreview(false);
       } catch (error) {
         const msg = error instanceof Error ? error.message : "Upload failed";
         addMessage({
           role: "assistant",
-          content: `Sorry, I couldn't parse your resume: ${msg}. You can try again or type your details manually.`,
+          content: `Could not parse resume: ${msg}. Try again or type your details.`,
         });
       } finally {
         setIsParsing(false);
@@ -90,8 +87,8 @@ export function BuilderPage() {
       addMessage({
         role: "assistant",
         content: section
-          ? `Regenerating the ${section} section...`
-          : "Crafting your portfolio... This may take a moment.",
+          ? `Regenerating ${section}...`
+          : "Generating your portfolio...",
       });
 
       try {
@@ -102,22 +99,17 @@ export function BuilderPage() {
           activePortfolio ?? undefined,
           section as Parameters<typeof generatePortfolio>[3]
         );
-
         saveGeneratedPortfolio(portfolio);
         setShowPreview(true);
-
-        const portfolioUrl = withBasePath(`/portfolio?id=${portfolio.id}`);
-
+        const url = withBasePath(`/portfolio?id=${portfolio.id}`);
         updateLastAssistantMessage(
           section
-            ? `The ${section} section has been regenerated. Check the preview panel.`
-            : `Your portfolio is ready — a ${portfolio.design.palette} design with ${portfolio.design.layoutVariant} layout.\n\nView: ${portfolioUrl}`
+            ? `${section} updated. Check preview.`
+            : `Portfolio ready (${portfolio.design.layoutVariant} layout).\n\nView: ${url}`
         );
       } catch (error) {
         const msg = error instanceof Error ? error.message : "Generation failed";
-        updateLastAssistantMessage(
-          `Sorry, I couldn't generate your portfolio: ${msg}`
-        );
+        updateLastAssistantMessage(`Generation failed: ${msg}`);
       } finally {
         setIsStreaming(false);
       }
@@ -141,7 +133,6 @@ export function BuilderPage() {
         await runGeneratePortfolio(regenSection);
         return;
       }
-
       if (shouldGeneratePortfolio(content)) {
         addMessage({ role: "user", content });
         await runGeneratePortfolio();
@@ -151,7 +142,6 @@ export function BuilderPage() {
       addMessage({ role: "user", content });
       addMessage({ role: "assistant", content: "" });
       setIsStreaming(true);
-
       abortRef.current?.abort();
       abortRef.current = new AbortController();
 
@@ -161,13 +151,12 @@ export function BuilderPage() {
       ].map((m) => ({ role: m.role, content: m.content }));
 
       const systemPrompt = portfolioData.name
-        ? `${BUILDER_SYSTEM_PROMPT}\n\nCurrent portfolio data:\n${JSON.stringify(portfolioData, null, 2)}`
+        ? `${BUILDER_SYSTEM_PROMPT}\n\nCurrent data:\n${JSON.stringify(portfolioData, null, 2)}`
         : BUILDER_SYSTEM_PROMPT;
 
       try {
         const apiKey = getApiKey();
         let fullContent = "";
-
         for await (const chunk of streamGeminiChat(
           apiKey,
           systemPrompt,
@@ -177,20 +166,14 @@ export function BuilderPage() {
           fullContent += chunk;
           updateLastAssistantMessage(fullContent);
         }
-
         const extracted = extractPortfolioDataFromMessage(fullContent);
-        if (extracted) {
-          setPortfolioData(mergePortfolioData(portfolioData, extracted));
-        }
-
-        const displayContent = stripPortfolioDataBlock(fullContent);
-        if (displayContent !== fullContent) {
-          updateLastAssistantMessage(displayContent);
-        }
+        if (extracted) setPortfolioData(mergePortfolioData(portfolioData, extracted));
+        const display = stripPortfolioDataBlock(fullContent);
+        if (display !== fullContent) updateLastAssistantMessage(display);
       } catch (error) {
         if ((error as Error).name !== "AbortError") {
           const msg = error instanceof Error ? error.message : "Chat failed";
-          updateLastAssistantMessage(`Sorry, something went wrong: ${msg}`);
+          updateLastAssistantMessage(`Error: ${msg}`);
         }
       } finally {
         setIsStreaming(false);
@@ -224,38 +207,37 @@ export function BuilderPage() {
   const hasProfile = Boolean(portfolioData.name);
 
   return (
-    <div className="flex h-dvh">
-      <motion.div
-        layout
-        className={`flex min-h-0 flex-col transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-          showPreview ? "w-full lg:w-1/2" : "w-full"
+    <div className="flex min-h-[100dvh] flex-col lg:flex-row">
+      <div
+        className={`flex min-h-0 min-w-0 flex-1 flex-col ${
+          showPreview ? "lg:w-1/2" : "w-full"
         }`}
       >
         <ChatLayout
-          showPreview={showPreview}
+          showPreview={Boolean(activePortfolio)}
           onTogglePreview={() => setShowPreview(!showPreview)}
           headerExtra={
-            <div className="ml-2 flex items-center gap-1">
+            <div className="ml-1 flex items-center gap-0.5 sm:ml-2 sm:gap-1">
               {hasProfile && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 text-xs hover:bg-gold/10 hover:text-gold"
+                  className="h-8 px-2 text-xs"
                   onClick={() => setShowEditor(!showEditor)}
                 >
-                  <Pencil className="mr-1 h-3 w-3" />
-                  Edit
+                  <Pencil className="h-3 w-3 sm:mr-1" />
+                  <span className="hidden sm:inline">Edit</span>
                 </Button>
               )}
               {activePortfolio && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 text-xs hover:bg-gold/10 hover:text-gold"
+                  className="h-8 px-2 text-xs"
                   onClick={handleExport}
                 >
-                  <Download className="mr-1 h-3 w-3" />
-                  Export
+                  <Download className="h-3 w-3 sm:mr-1" />
+                  <span className="hidden sm:inline">Export</span>
                 </Button>
               )}
             </div>
@@ -266,90 +248,64 @@ export function BuilderPage() {
               disabled={isStreaming || isParsing}
               placeholder={
                 hasProfile
-                  ? "Refine your portfolio or say 'generate my portfolio'..."
-                  : "Tell us about yourself, your skills, and your best work..."
+                  ? "Refine your portfolio or say generate my portfolio..."
+                  : "Describe your role, skills, and projects..."
               }
             />
           }
         >
-          <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col">
+          <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col px-1 sm:px-0">
             {messages.length === 0 ? (
               <div className="flex flex-1 flex-col">
                 <EmptyState />
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4, duration: 0.5 }}
-                  className="px-4 pb-4"
-                >
+                <div className="px-3 pb-4 sm:px-4">
                   <ResumeDropzone
                     onFileSelect={handleResumeUpload}
                     isLoading={isParsing}
                   />
-                </motion.div>
+                </div>
               </div>
             ) : (
               <>
-                <AnimatePresence>
-                  {showEditor && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="overflow-hidden px-4 pt-4"
-                    >
-                      <ProfileEditor
-                        data={portfolioData}
-                        onChange={setPortfolioData}
-                        onClose={() => setShowEditor(false)}
-                      />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                {showEditor && (
+                  <div className="px-3 pt-3 sm:px-4 sm:pt-4">
+                    <ProfileEditor
+                      data={portfolioData}
+                      onChange={setPortfolioData}
+                      onClose={() => setShowEditor(false)}
+                    />
+                  </div>
+                )}
                 <MessageList messages={messages} isStreaming={isStreaming} />
               </>
             )}
           </div>
         </ChatLayout>
-      </motion.div>
+      </div>
 
-      <AnimatePresence>
-        {showPreview && (
-          <>
-            <motion.div
-              initial={{ opacity: 0, x: "100%" }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: "100%" }}
-              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-              className="fixed inset-0 z-40 bg-background lg:hidden"
-            >
-              <div className="glass-panel flex h-14 items-center justify-between px-4">
-                <span className="text-sm font-medium">Live Preview</span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => setShowPreview(false)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="h-[calc(100dvh-3.5rem)] overflow-y-auto">
-                <PortfolioPreview portfolio={activePortfolio} mobile />
-              </div>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, x: 40 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 40 }}
-              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-              className="hidden min-h-0 w-1/2 border-l border-gold/10 lg:block"
-            >
-              <PortfolioPreview portfolio={activePortfolio} />
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      {showPreview && (
+        <>
+          <div className="fixed inset-0 z-30 flex flex-col bg-background lg:hidden">
+            <div className="flex h-12 items-center justify-between border-b border-border px-4">
+              <span className="text-sm font-medium">Preview</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setShowPreview(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <PortfolioPreview portfolio={activePortfolio} mobile />
+            </div>
+          </div>
+          <div className="hidden min-h-0 w-full border-t border-border lg:block lg:w-1/2 lg:border-t-0 lg:border-l">
+            <PortfolioPreview portfolio={activePortfolio} />
+          </div>
+        </>
+      )}
     </div>
   );
 }

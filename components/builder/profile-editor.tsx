@@ -43,7 +43,7 @@ export function ProfileEditor({ data, onChange, onClose }: ProfileEditorProps) {
   };
 
   return (
-    <div className="space-y-4 rounded-xl border bg-card p-4 text-sm">
+    <div className="surface space-y-4 p-4 text-sm sm:p-5">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold">Edit profile</h3>
         <Button variant="ghost" size="sm" onClick={onClose}>
@@ -103,7 +103,7 @@ export function ProfileEditor({ data, onChange, onClose }: ProfileEditorProps) {
           </Button>
         </div>
         {data.projects.map((project, i) => (
-          <div key={i} className="space-y-2 rounded-lg border p-3">
+          <div key={i} className="surface space-y-2 p-3">
             <div className="flex justify-between">
               <input
                 className="flex-1 rounded-md border bg-background px-2 py-1 font-medium"

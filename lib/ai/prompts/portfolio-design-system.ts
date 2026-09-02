@@ -56,7 +56,16 @@ Given the user's profile data and design guidelines, output ONLY valid JSON (no 
   ]
 }
 
-Pick ONE cohesive design direction based on the user's role and skills. Make it distinctive — avoid generic AI portfolio aesthetics.`;
+Pick ONE cohesive design direction based on the user's role and skills.
+
+Hard rules from design skills:
+- Prefer monochrome palettes: black, white, greys. One accent max.
+- No purple-blue gradients, no gold luxury defaults, no beige+brass premium-consumer palette
+- No em-dashes in any copy
+- No generic marketing copy or fake names
+- Hero headline max 2 lines, subheadline max 20 words
+- Use user's real project data only
+- layoutVariant must match role: developer=terminal or classic, designer=editorial or bento`;
 
 export { loadDesignSkillFiles };
 
