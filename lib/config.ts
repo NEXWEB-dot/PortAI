@@ -1,5 +1,5 @@
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
-const defaultApiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
+const geminiApiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
 
 export function withBasePath(path: string): string {
   if (!basePath) return path;
@@ -7,4 +7,13 @@ export function withBasePath(path: string): string {
   return `${basePath}${normalized}`;
 }
 
-export { basePath, defaultApiKey };
+export function getApiKey(): string {
+  if (!geminiApiKey) {
+    throw new Error(
+      "AI is not configured. Add NEXT_PUBLIC_GEMINI_API_KEY to the build environment."
+    );
+  }
+  return geminiApiKey;
+}
+
+export { basePath, geminiApiKey };

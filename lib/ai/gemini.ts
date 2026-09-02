@@ -4,7 +4,7 @@ const MODEL = "gemini-2.0-flash";
 
 export function getGeminiClient(apiKey: string) {
   if (!apiKey) {
-    throw new Error("Add your Gemini API key in Settings");
+    throw new Error("AI service is temporarily unavailable.");
   }
   return new GoogleGenerativeAI(apiKey);
 }

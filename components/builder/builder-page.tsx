@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { ChatLayout } from "@/components/builder/chat-layout";
 import { ChatInput } from "@/components/builder/chat-input";
 import { EmptyState } from "@/components/builder/empty-state";
@@ -8,11 +9,6 @@ import { MessageList } from "@/components/builder/message-list";
 import { ResumeDropzone } from "@/components/builder/resume-dropzone";
 import { ProfileEditor } from "@/components/builder/profile-editor";
 import { PortfolioPreview } from "@/components/builder/portfolio-preview";
-import {
-  ApiKeyButton,
-  ApiKeySettings,
-} from "@/components/builder/api-key-settings";
-import { ApiKeyBootstrap, useEffectiveApiKey } from "@/components/builder/use-api-key";
 import { Button } from "@/components/ui/button";
 import { usePortfolioStore } from "@/lib/store/portfolio-store";
 import {
@@ -28,12 +24,11 @@ import {
   streamGeminiChat,
 } from "@/lib/ai/portfolio-service";
 import { BUILDER_SYSTEM_PROMPT } from "@/lib/ai/prompts/builder-system";
-import { withBasePath } from "@/lib/config";
+import { getApiKey, withBasePath } from "@/lib/config";
 import { extractPdfText } from "@/lib/pdf/extract-text";
-import { Download, Pencil } from "lucide-react";
+import { Download, Pencil, X } from "lucide-react";
 
 export function BuilderPage() {
-  const apiKey = useEffectiveApiKey();
   const {
     portfolioData,
     messages,
@@ -52,27 +47,17 @@ export function BuilderPage() {
   } = usePortfolioStore();
 
   const [showEditor, setShowEditor] = useState(false);
-  const [showApiKey, setShowApiKey] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   const activePortfolio =
     generatedPortfolios.find((p) => p.id === activePortfolioId) ?? null;
 
-  const requireApiKey = useCallback(() => {
-    if (!apiKey) {
-      setShowApiKey(true);
-      return false;
-    }
-    return true;
-  }, [apiKey]);
-
   const handleResumeUpload = useCallback(
     async (file: File) => {
-      if (!requireApiKey()) return;
-
       setIsParsing(true);
 
       try {
+        const apiKey = getApiKey();
         const resumeText = await extractPdfText(file);
         const data = await parseResumeText(apiKey, resumeText);
 
@@ -83,7 +68,7 @@ export function BuilderPage() {
         });
         addMessage({
           role: "assistant",
-          content: `I've extracted your profile from the resume:\n\n**${data.name}** — ${data.title}\n\n${data.skills.length} skills and ${data.projects.length} projects found.\n\nWould you like to edit anything, or should I generate your portfolio?`,
+          content: `I've extracted your profile from the resume:\n\n${data.name} — ${data.title}\n\n${data.skills.length} skills and ${data.projects.length} projects found.\n\nWould you like to edit anything, or should I generate your portfolio?`,
         });
         setShowPreview(false);
       } catch (error) {
@@ -96,29 +81,21 @@ export function BuilderPage() {
         setIsParsing(false);
       }
     },
-    [
-      addMessage,
-      apiKey,
-      requireApiKey,
-      setIsParsing,
-      setPortfolioData,
-      setShowPreview,
-    ]
+    [addMessage, setIsParsing, setPortfolioData, setShowPreview]
   );
 
   const runGeneratePortfolio = useCallback(
     async (section?: string) => {
-      if (!requireApiKey()) return;
-
       setIsStreaming(true);
       addMessage({
         role: "assistant",
         content: section
           ? `Regenerating the ${section} section...`
-          : "Generating your portfolio... This may take a moment.",
+          : "Crafting your portfolio... This may take a moment.",
       });
 
       try {
+        const apiKey = getApiKey();
         const portfolio = await generatePortfolio(
           apiKey,
           portfolioData,
@@ -134,7 +111,7 @@ export function BuilderPage() {
         updateLastAssistantMessage(
           section
             ? `The ${section} section has been regenerated. Check the preview panel.`
-            : `Your portfolio is ready! I've created a ${portfolio.design.palette} design with a ${portfolio.design.layoutVariant} layout.\n\nOpen: ${portfolioUrl}`
+            : `Your portfolio is ready — a ${portfolio.design.palette} design with ${portfolio.design.layoutVariant} layout.\n\nView: ${portfolioUrl}`
         );
       } catch (error) {
         const msg = error instanceof Error ? error.message : "Generation failed";
@@ -148,9 +125,7 @@ export function BuilderPage() {
     [
       activePortfolio,
       addMessage,
-      apiKey,
       portfolioData,
-      requireApiKey,
       saveGeneratedPortfolio,
       setIsStreaming,
       setShowPreview,
@@ -160,8 +135,6 @@ export function BuilderPage() {
 
   const handleSend = useCallback(
     async (content: string) => {
-      if (!requireApiKey()) return;
-
       const regenSection = detectRegenerateSection(content);
       if (regenSection && activePortfolio) {
         addMessage({ role: "user", content });
@@ -192,6 +165,7 @@ export function BuilderPage() {
         : BUILDER_SYSTEM_PROMPT;
 
       try {
+        const apiKey = getApiKey();
         let fullContent = "";
 
         for await (const chunk of streamGeminiChat(
@@ -225,10 +199,8 @@ export function BuilderPage() {
     [
       activePortfolio,
       addMessage,
-      apiKey,
       messages,
       portfolioData,
-      requireApiKey,
       runGeneratePortfolio,
       setIsStreaming,
       setPortfolioData,
@@ -252,126 +224,132 @@ export function BuilderPage() {
   const hasProfile = Boolean(portfolioData.name);
 
   return (
-    <>
-      <ApiKeyBootstrap />
-      <ApiKeySettings open={showApiKey} onClose={() => setShowApiKey(false)} />
-
-      <div className="flex h-dvh">
-        <div
-          className={`flex min-h-0 flex-col transition-all ${
-            showPreview ? "w-full lg:w-1/2" : "w-full"
-          }`}
-        >
-          <ChatLayout
-            showPreview={showPreview}
-            onTogglePreview={() => setShowPreview(!showPreview)}
-            headerExtra={
-              <div className="ml-2 flex items-center gap-1">
-                <ApiKeyButton onClick={() => setShowApiKey(true)} />
-                {hasProfile && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs"
-                    onClick={() => setShowEditor(!showEditor)}
-                  >
-                    <Pencil className="mr-1 h-3 w-3" />
-                    Edit
-                  </Button>
-                )}
-                {activePortfolio && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs"
-                    onClick={handleExport}
-                  >
-                    <Download className="mr-1 h-3 w-3" />
-                    Export
-                  </Button>
-                )}
-              </div>
-            }
-            input={
-              <ChatInput
-                onSend={handleSend}
-                disabled={isStreaming || isParsing}
-                placeholder={
-                  !apiKey
-                    ? "Add your Gemini API key first (top right)..."
-                    : hasProfile
-                      ? "Ask me to refine your portfolio or type 'generate my portfolio'..."
-                      : "Describe yourself or upload a resume..."
-                }
-              />
-            }
-          >
-            <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col">
-              {!apiKey && (
-                <div className="mx-4 mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
-                  Add your free Gemini API key to use AI features.{" "}
-                  <button
-                    className="font-medium underline"
-                    onClick={() => setShowApiKey(true)}
-                  >
-                    Open settings
-                  </button>
-                </div>
+    <div className="flex h-dvh">
+      <motion.div
+        layout
+        className={`flex min-h-0 flex-col transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+          showPreview ? "w-full lg:w-1/2" : "w-full"
+        }`}
+      >
+        <ChatLayout
+          showPreview={showPreview}
+          onTogglePreview={() => setShowPreview(!showPreview)}
+          headerExtra={
+            <div className="ml-2 flex items-center gap-1">
+              {hasProfile && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs hover:bg-gold/10 hover:text-gold"
+                  onClick={() => setShowEditor(!showEditor)}
+                >
+                  <Pencil className="mr-1 h-3 w-3" />
+                  Edit
+                </Button>
               )}
-              {messages.length === 0 ? (
-                <div className="flex flex-1 flex-col">
-                  <EmptyState />
-                  <div className="px-4 pb-4">
-                    <ResumeDropzone
-                      onFileSelect={handleResumeUpload}
-                      isLoading={isParsing}
-                    />
-                    <p className="mt-3 text-center text-xs text-muted-foreground">
-                      or start typing below
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <>
+              {activePortfolio && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs hover:bg-gold/10 hover:text-gold"
+                  onClick={handleExport}
+                >
+                  <Download className="mr-1 h-3 w-3" />
+                  Export
+                </Button>
+              )}
+            </div>
+          }
+          input={
+            <ChatInput
+              onSend={handleSend}
+              disabled={isStreaming || isParsing}
+              placeholder={
+                hasProfile
+                  ? "Refine your portfolio or say 'generate my portfolio'..."
+                  : "Tell us about yourself, your skills, and your best work..."
+              }
+            />
+          }
+        >
+          <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col">
+            {messages.length === 0 ? (
+              <div className="flex flex-1 flex-col">
+                <EmptyState />
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4, duration: 0.5 }}
+                  className="px-4 pb-4"
+                >
+                  <ResumeDropzone
+                    onFileSelect={handleResumeUpload}
+                    isLoading={isParsing}
+                  />
+                </motion.div>
+              </div>
+            ) : (
+              <>
+                <AnimatePresence>
                   {showEditor && (
-                    <div className="px-4 pt-4">
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="overflow-hidden px-4 pt-4"
+                    >
                       <ProfileEditor
                         data={portfolioData}
                         onChange={setPortfolioData}
                         onClose={() => setShowEditor(false)}
                       />
-                    </div>
+                    </motion.div>
                   )}
-                  <MessageList messages={messages} isStreaming={isStreaming} />
-                </>
-              )}
-            </div>
-          </ChatLayout>
-        </div>
+                </AnimatePresence>
+                <MessageList messages={messages} isStreaming={isStreaming} />
+              </>
+            )}
+          </div>
+        </ChatLayout>
+      </motion.div>
 
+      <AnimatePresence>
         {showPreview && (
           <>
-            <div className="fixed inset-0 z-40 bg-background lg:hidden">
-              <div className="flex h-14 items-center justify-between border-b px-4">
-                <span className="text-sm font-medium">Preview</span>
+            <motion.div
+              initial={{ opacity: 0, x: "100%" }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: "100%" }}
+              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+              className="fixed inset-0 z-40 bg-background lg:hidden"
+            >
+              <div className="glass-panel flex h-14 items-center justify-between px-4">
+                <span className="text-sm font-medium">Live Preview</span>
                 <Button
                   variant="ghost"
-                  size="sm"
+                  size="icon"
+                  className="h-8 w-8"
                   onClick={() => setShowPreview(false)}
                 >
-                  Close
+                  <X className="h-4 w-4" />
                 </Button>
               </div>
               <div className="h-[calc(100dvh-3.5rem)] overflow-y-auto">
                 <PortfolioPreview portfolio={activePortfolio} mobile />
               </div>
-            </div>
-            <div className="hidden min-h-0 w-1/2 border-l lg:block">
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, x: 40 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 40 }}
+              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+              className="hidden min-h-0 w-1/2 border-l border-gold/10 lg:block"
+            >
               <PortfolioPreview portfolio={activePortfolio} />
-            </div>
+            </motion.div>
           </>
         )}
-      </div>
-    </>
+      </AnimatePresence>
+    </div>
   );
 }
