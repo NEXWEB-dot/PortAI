@@ -1,5 +1,4 @@
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
-const geminiApiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
 
 export function withBasePath(path: string): string {
   if (!basePath) return path;
@@ -8,12 +7,18 @@ export function withBasePath(path: string): string {
 }
 
 export function getApiKey(): string {
-  if (!geminiApiKey) {
+  // Read inline so Next.js replaces this at build time (required for Vercel/static export).
+  const key = (process.env.NEXT_PUBLIC_GEMINI_API_KEY ?? "").trim();
+  if (!key) {
     throw new Error(
-      "AI is not configured. Add NEXT_PUBLIC_GEMINI_API_KEY to the build environment."
+      "AI is not configured. Add NEXT_PUBLIC_GEMINI_API_KEY in Vercel Environment Variables and redeploy."
     );
   }
-  return geminiApiKey;
+  return key;
 }
 
-export { basePath, geminiApiKey };
+export function isApiKeyConfigured(): boolean {
+  return Boolean((process.env.NEXT_PUBLIC_GEMINI_API_KEY ?? "").trim());
+}
+
+export { basePath };

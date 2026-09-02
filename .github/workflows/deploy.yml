@@ -45,8 +45,9 @@ jobs:
 
       - name: Verify API key baked into client bundle
         run: |
-          if grep -rq 'let a="/PortAI",o=""' out/_next/static/chunks/; then
-            echo "::error::NEXT_PUBLIC_GEMINI_API_KEY was not inlined. Update the GEMINI_API_KEY repository secret and redeploy."
+          if grep -rq 'AI is not configured' out/_next/static/chunks/ && \
+             grep -rq 'NEXT_PUBLIC_GEMINI_API_KEY??""' out/_next/static/chunks/; then
+            echo "::error::NEXT_PUBLIC_GEMINI_API_KEY was not inlined. Update GEMINI_API_KEY and redeploy."
             exit 1
           fi
           echo "API key successfully inlined into client bundle."
