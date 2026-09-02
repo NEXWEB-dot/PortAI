@@ -17,6 +17,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
+      NEXT_PUBLIC_GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
     steps:
       - uses: actions/checkout@v4
 
@@ -39,9 +42,14 @@ jobs:
 
       - name: Build static site
         run: npm run build
-        env:
-          NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
-          NEXT_PUBLIC_GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+      - name: Verify API key baked into client bundle
+        run: |
+          if grep -rq 'let a="/PortAI",o=""' out/_next/static/chunks/; then
+            echo "::error::NEXT_PUBLIC_GEMINI_API_KEY was not inlined. Update the GEMINI_API_KEY repository secret and redeploy."
+            exit 1
+          fi
+          echo "API key successfully inlined into client bundle."
 
       - uses: actions/upload-pages-artifact@v3
         with:
