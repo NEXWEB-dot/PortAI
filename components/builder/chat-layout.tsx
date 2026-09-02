@@ -9,7 +9,8 @@ type ChatLayoutProps = {
   children: ReactNode;
   input: ReactNode;
   headerExtra?: ReactNode;
-  showPreview?: boolean;
+  hasPortfolio?: boolean;
+  previewOpen?: boolean;
   onTogglePreview?: () => void;
 };
 
@@ -17,7 +18,8 @@ export function ChatLayout({
   children,
   input,
   headerExtra,
-  showPreview,
+  hasPortfolio,
+  previewOpen,
   onTogglePreview,
 }: ChatLayoutProps) {
   return (
@@ -36,17 +38,17 @@ export function ChatLayout({
           {headerExtra}
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          {onTogglePreview && (
+          {hasPortfolio && onTogglePreview && (
             <Button
-              variant="ghost"
+              variant={previewOpen ? "secondary" : "ghost"}
               size="sm"
               className="h-8 gap-1.5 px-2 text-xs sm:px-3"
               onClick={onTogglePreview}
             >
-              {showPreview ? (
+              {previewOpen ? (
                 <>
                   <PanelRightClose className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Close</span>
+                  <span className="hidden sm:inline">Hide</span>
                 </>
               ) : (
                 <>

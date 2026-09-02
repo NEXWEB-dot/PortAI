@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ChatLayout } from "@/components/builder/chat-layout";
 import { ChatInput } from "@/components/builder/chat-input";
 import { EmptyState } from "@/components/builder/empty-state";
@@ -23,7 +23,8 @@ import {
   streamGeminiChat,
 } from "@/lib/ai/portfolio-service";
 import { BUILDER_SYSTEM_PROMPT } from "@/lib/ai/prompts/builder-system";
-import { getApiKey, withBasePath } from "@/lib/config";
+import { getApiKey } from "@/lib/config";
+import { downloadPortfolioHtml } from "@/lib/portfolio/export-html";
 import { extractPdfText } from "@/lib/pdf/extract-text";
 import { Download, Pencil, X } from "lucide-react";
 
@@ -50,6 +51,15 @@ export function BuilderPage() {
 
   const activePortfolio =
     generatedPortfolios.find((p) => p.id === activePortfolioId) ?? null;
+
+  const lastOpenedPortfolioId = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (activePortfolioId && activePortfolioId !== lastOpenedPortfolioId.current) {
+      setShowPreview(true);
+      lastOpenedPortfolioId.current = activePortfolioId;
+    }
+  }, [activePortfolioId, setShowPreview]);
 
   const handleResumeUpload = useCallback(
     async (file: File) => {
@@ -101,11 +111,10 @@ export function BuilderPage() {
         );
         saveGeneratedPortfolio(portfolio);
         setShowPreview(true);
-        const url = withBasePath(`/portfolio?id=${portfolio.id}`);
         updateLastAssistantMessage(
           section
-            ? `${section} updated. Check preview.`
-            : `Portfolio ready (${portfolio.design.layoutVariant} layout).\n\nView: ${url}`
+            ? `${section} updated. Check the preview panel.`
+            : `Portfolio ready (${portfolio.design.layoutVariant} layout).\n\nUse Preview to see it live, or Download HTML to save the file.`
         );
       } catch (error) {
         const msg = error instanceof Error ? error.message : "Generation failed";
@@ -191,17 +200,9 @@ export function BuilderPage() {
     ]
   );
 
-  const handleExport = useCallback(() => {
+  const handleExportHtml = useCallback(() => {
     if (!activePortfolio) return;
-    const blob = new Blob([JSON.stringify(activePortfolio, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `portfolio-${activePortfolio.id}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadPortfolioHtml(activePortfolio);
   }, [activePortfolio]);
 
   const hasProfile = Boolean(portfolioData.name);
@@ -214,7 +215,8 @@ export function BuilderPage() {
         }`}
       >
         <ChatLayout
-          showPreview={Boolean(activePortfolio)}
+          hasPortfolio={Boolean(activePortfolio)}
+          previewOpen={showPreview}
           onTogglePreview={() => setShowPreview(!showPreview)}
           headerExtra={
             <div className="ml-1 flex items-center gap-0.5 sm:ml-2 sm:gap-1">
@@ -234,10 +236,10 @@ export function BuilderPage() {
                   variant="ghost"
                   size="sm"
                   className="h-8 px-2 text-xs"
-                  onClick={handleExport}
+                  onClick={handleExportHtml}
                 >
                   <Download className="h-3 w-3 sm:mr-1" />
-                  <span className="hidden sm:inline">Export</span>
+                  <span className="hidden sm:inline">HTML</span>
                 </Button>
               )}
             </div>
@@ -283,11 +285,11 @@ export function BuilderPage() {
         </ChatLayout>
       </div>
 
-      {showPreview && (
+      {showPreview && activePortfolio && (
         <>
           <div className="fixed inset-0 z-30 flex flex-col bg-background lg:hidden">
-            <div className="flex h-12 items-center justify-between border-b border-border px-4">
-              <span className="text-sm font-medium">Preview</span>
+            <div className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4">
+              <span className="text-sm font-medium">Portfolio preview</span>
               <Button
                 variant="ghost"
                 size="icon"
@@ -297,11 +299,11 @@ export function BuilderPage() {
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className="min-h-0 flex-1">
               <PortfolioPreview portfolio={activePortfolio} mobile />
             </div>
           </div>
-          <div className="hidden min-h-0 w-full border-t border-border lg:block lg:w-1/2 lg:border-t-0 lg:border-l">
+          <div className="hidden h-dvh min-h-0 w-full shrink-0 border-t border-border lg:flex lg:w-1/2 lg:flex-col lg:border-t-0 lg:border-l">
             <PortfolioPreview portfolio={activePortfolio} />
           </div>
         </>
