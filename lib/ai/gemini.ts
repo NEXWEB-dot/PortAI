@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const MODEL = "gemini-3.6-flash";
+const MODEL = process.env.NEXT_PUBLIC_GEMINI_MODEL || "gemini-2.5-flash";
 
 export function getGeminiClient(apiKey: string) {
   if (!apiKey) {
