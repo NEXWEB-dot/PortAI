@@ -27,6 +27,16 @@ jobs:
 
       - run: npm ci
 
+      - name: Verify Gemini API key secret
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "::error::GEMINI_API_KEY is missing or empty. In repo Settings → Secrets and variables → Actions, set GEMINI_API_KEY to your key from https://aistudio.google.com/apikey"
+            exit 1
+          fi
+          echo "GEMINI_API_KEY is set (${#GEMINI_API_KEY} characters)"
+
       - name: Build static site
         run: npm run build
         env:
