@@ -1,4 +1,4 @@
-# PortAi — AI Portfolio Builder
+# PortAi AI Portfolio Builder
 
 **Live app (just open this link):**  
 https://nexweb-dot.github.io/PortAI/
