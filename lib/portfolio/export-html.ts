@@ -24,12 +24,12 @@ function fontStack(name: string): string {
   return stacks[name] ?? `'${name}', system-ui, sans-serif`;
 }
 
-function googleFontsLink(design: DesignTokens): string {
+function googleFontsImport(design: DesignTokens): string {
   const families = new Set([design.fontHeading, design.fontBody]);
   const params = [...families]
     .map((f) => `family=${encodeURIComponent(f.replace(/ /g, "+"))}:wght@400;500;600;700`)
     .join("&");
-  return `https://fonts.googleapis.com/css2?${params}&display=swap`;
+  return `@import url('https://fonts.googleapis.com/css2?${params}&display=swap');`;
 }
 
 function renderHero(
@@ -258,6 +258,7 @@ function portfolioStyles(design: DesignTokens): string {
   const body = fontStack(design.fontBody);
 
   return `
+    ${googleFontsImport(design)}
     :root {
       --primary: ${design.primaryColor};
       --accent: ${design.accentColor};
@@ -266,9 +267,10 @@ function portfolioStyles(design: DesignTokens): string {
       --heading: ${heading};
       --body: ${body};
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html { scroll-behavior: smooth; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; height: 100%; }
     body {
+      min-height: 100%;
       font-family: var(--body);
       background: var(--bg);
       color: var(--text);
@@ -606,9 +608,6 @@ export function exportPortfolioHtml(portfolio: GeneratedPortfolio): string {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${pageTitle}${displayTitle ? ` - ${displayTitle}` : ""}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="${googleFontsLink(design)}" rel="stylesheet" />
   <style>${portfolioStyles(design)}</style>
 </head>
 <body>

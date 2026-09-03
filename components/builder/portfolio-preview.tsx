@@ -66,8 +66,7 @@ export function PortfolioPreview({
         <iframe
           title={`Preview: ${portfolio.data.name || "Portfolio"}`}
           srcDoc={html}
-          className="absolute inset-0 h-full w-full border-0 bg-white"
-          sandbox="allow-same-origin allow-scripts"
+          className="absolute inset-0 h-full w-full border-0"
         />
       </div>
     </div>
