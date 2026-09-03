@@ -1,6 +1,9 @@
 import { v4 as uuidv4 } from "uuid";
-import { generateGeminiJSON, parseJsonResponse } from "@/lib/ai/gemini";
-import { BUILDER_SYSTEM_PROMPT } from "@/lib/ai/prompts/builder-system";
+import {
+  generateOpenRouterJSON,
+  parseJsonResponse,
+  streamOpenRouterChat,
+} from "@/lib/ai/openrouter";
 import {
   PORTFOLIO_GENERATION_PROMPT,
   buildSectionRegenPrompt,
@@ -13,7 +16,15 @@ import type {
   PortfolioSection,
 } from "@/lib/types/portfolio";
 
-const EXTRACT_PROMPT = `Extract portfolio information from this text or conversation. Return ONLY valid JSON (no markdown) matching this structure:
+const RESUME_EXTRACTION_SYSTEM_PROMPT = `You are a specialized, precision resume data extractor.
+Your sole job is to extract profile details from resumes and text, returning ONLY a valid JSON object.
+Rules:
+- Return ONLY valid JSON starting with '{' and ending with '}'.
+- NEVER include conversational preambles (never say 'I have processed', 'Here is the extracted', 'Sure', etc.).
+- NEVER include conversational postambles.
+- No markdown code block fences if possible, just the raw JSON object.`;
+
+const EXTRACT_PROMPT = `Extract portfolio information from this text or conversation. Return ONLY valid JSON matching this structure:
 {
   "name": "string",
   "title": "string",
@@ -29,12 +40,20 @@ export async function parseResumeText(
   apiKey: string,
   resumeText: string
 ): Promise<PortfolioData> {
-  const response = await generateGeminiJSON(
+  const response = await generateOpenRouterJSON(
     apiKey,
-    BUILDER_SYSTEM_PROMPT,
+    RESUME_EXTRACTION_SYSTEM_PROMPT,
     `${EXTRACT_PROMPT}\n\nResume text:\n${resumeText.slice(0, 15000)}`
   );
-  return parseJsonResponse(response) as PortfolioData;
+  const parsed = parseJsonResponse(response) as Partial<PortfolioData>;
+  return {
+    name: parsed.name || "Portfolio Owner",
+    title: parsed.title || "Professional",
+    bio: parsed.bio || "",
+    skills: Array.isArray(parsed.skills) ? parsed.skills : [],
+    projects: Array.isArray(parsed.projects) ? parsed.projects : [],
+    contact: parsed.contact || {},
+  };
 }
 
 export async function extractProfileFromPrompt(
@@ -43,12 +62,20 @@ export async function extractProfileFromPrompt(
   existingData?: PortfolioData
 ): Promise<PortfolioData> {
   const context = existingData?.name ? `Existing data:\n${JSON.stringify(existingData, null, 2)}\n\n` : "";
-  const response = await generateGeminiJSON(
+  const response = await generateOpenRouterJSON(
     apiKey,
-    BUILDER_SYSTEM_PROMPT,
+    RESUME_EXTRACTION_SYSTEM_PROMPT,
     `${EXTRACT_PROMPT}\n\n${context}User request:\n${userPrompt}`
   );
-  return parseJsonResponse(response) as PortfolioData;
+  const parsed = parseJsonResponse(response) as Partial<PortfolioData>;
+  return {
+    name: parsed.name || existingData?.name || "Portfolio Owner",
+    title: parsed.title || existingData?.title || "Professional",
+    bio: parsed.bio || existingData?.bio || "",
+    skills: Array.isArray(parsed.skills) ? parsed.skills : existingData?.skills || [],
+    projects: Array.isArray(parsed.projects) ? parsed.projects : existingData?.projects || [],
+    contact: { ...existingData?.contact, ...parsed.contact },
+  };
 }
 
 export async function generatePortfolio(
@@ -67,7 +94,7 @@ export async function generatePortfolio(
       existingPortfolio,
       portfolioData
     );
-    const response = await generateGeminiJSON(apiKey, system, user);
+    const response = await generateOpenRouterJSON(apiKey, system, user);
     const generated = parseJsonResponse(response) as { section: PortfolioSection };
 
     return {
@@ -90,7 +117,7 @@ export async function generatePortfolio(
     .join("\n\n");
 
   const userPrompt = `Generate a world-class portfolio landing page adhering to the design skills:\n\n${promptDetails}`;
-  const response = await generateGeminiJSON(apiKey, systemPrompt, userPrompt);
+  const response = await generateOpenRouterJSON(apiKey, systemPrompt, userPrompt);
   const generated = parseJsonResponse(response) as {
     design: GeneratedPortfolio["design"];
     sections: PortfolioSection[];
@@ -123,4 +150,4 @@ export async function generatePortfolio(
   };
 }
 
-export { streamGeminiChat } from "@/lib/ai/gemini";
+export { streamOpenRouterChat, streamOpenRouterChat as streamGeminiChat };

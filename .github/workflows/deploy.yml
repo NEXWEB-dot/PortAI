@@ -19,7 +19,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
-      NEXT_PUBLIC_GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      NEXT_PUBLIC_OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY || secrets.GEMINI_API_KEY }}
+      NEXT_PUBLIC_OPENROUTER_MODEL: z-ai/glm-5.2:free
+      NEXT_PUBLIC_GEMINI_API_KEY: ${{ secrets.OPENROUTER_API_KEY || secrets.GEMINI_API_KEY }}
     steps:
       - uses: actions/checkout@v4
 
@@ -30,27 +32,18 @@ jobs:
 
       - run: npm ci
 
-      - name: Verify Gemini API key secret
+      - name: Verify AI API key secret
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          AI_KEY: ${{ secrets.OPENROUTER_API_KEY || secrets.GEMINI_API_KEY }}
         run: |
-          if [ -z "$GEMINI_API_KEY" ]; then
-            echo "::error::GEMINI_API_KEY is missing or empty. In repo Settings → Secrets and variables → Actions, set GEMINI_API_KEY to your key from https://aistudio.google.com/apikey"
+          if [ -z "$AI_KEY" ]; then
+            echo "::error::OPENROUTER_API_KEY is missing or empty. In repo Settings → Secrets and variables → Actions, add OPENROUTER_API_KEY."
             exit 1
           fi
-          echo "GEMINI_API_KEY is set (${#GEMINI_API_KEY} characters)"
+          echo "AI API key is configured (${#AI_KEY} characters)"
 
       - name: Build static site
         run: npm run build
-
-      - name: Verify API key baked into client bundle
-        run: |
-          if grep -rq 'AI is not configured' out/_next/static/chunks/ && \
-             grep -rq 'NEXT_PUBLIC_GEMINI_API_KEY??""' out/_next/static/chunks/; then
-            echo "::error::NEXT_PUBLIC_GEMINI_API_KEY was not inlined. Update GEMINI_API_KEY and redeploy."
-            exit 1
-          fi
-          echo "API key successfully inlined into client bundle."
 
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -7,18 +7,37 @@ export function withBasePath(path: string): string {
 }
 
 export function getApiKey(): string {
-  // Read inline so Next.js replaces this at build time (required for Vercel/static export).
-  const key = (process.env.NEXT_PUBLIC_GEMINI_API_KEY ?? "").trim();
+  // Read inline so Next.js replaces this at build time for static export.
+  const key = (
+    process.env.NEXT_PUBLIC_OPENROUTER_API_KEY ||
+    process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
+    ""
+  ).trim();
+
   if (!key) {
     throw new Error(
-      "AI is not configured. Add NEXT_PUBLIC_GEMINI_API_KEY in Vercel Environment Variables and redeploy."
+      "AI is not configured. Please set NEXT_PUBLIC_OPENROUTER_API_KEY in environment variables."
     );
   }
   return key;
 }
 
 export function isApiKeyConfigured(): boolean {
-  return Boolean((process.env.NEXT_PUBLIC_GEMINI_API_KEY ?? "").trim());
+  return Boolean(
+    (
+      process.env.NEXT_PUBLIC_OPENROUTER_API_KEY ||
+      process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
+      ""
+    ).trim()
+  );
+}
+
+export function getModelName(): string {
+  return (
+    process.env.NEXT_PUBLIC_OPENROUTER_MODEL ||
+    process.env.NEXT_PUBLIC_GEMINI_MODEL ||
+    "z-ai/glm-5.2:free"
+  ).trim();
 }
 
 export { basePath };
